@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../data/bd_locations.dart';
 import '../main.dart';
+import '../models/forecast.dart';
 import '../models/weather.dart';
 import '../services/weather_service.dart';
 
@@ -19,6 +20,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   List<String> _suggestions = [];
   Future<Weather>? _weatherFuture;
+  Future<List<ForecastItem>>? _forecastFuture;
   bool _locating = false;
 
   void _onSearchChanged(String query) {
@@ -32,6 +34,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
     setState(() {
       _suggestions = [];
       _weatherFuture = _service.fetchByCityName(district);
+      _forecastFuture = _service.fetchForecastByCityName(district);
     });
     FocusScope.of(context).unfocus();
   }
@@ -64,9 +67,16 @@ class _WeatherScreenState extends State<WeatherScreen> {
           position.latitude,
           position.longitude,
         );
+        _forecastFuture = _service.fetchForecastByCoordinates(
+          position.latitude,
+          position.longitude,
+        );
       });
     } catch (e) {
-      setState(() => _weatherFuture = Future.error(e));
+      setState(() {
+        _weatherFuture = Future.error(e);
+        _forecastFuture = null;
+      });
     } finally {
       setState(() => _locating = false);
     }
@@ -166,15 +176,32 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     );
                   }
                   if (snapshot.hasError) {
-                    return _ErrorCard(
-                      message: snapshot.error.toString(),
-                    );
+                    return _ErrorCard(message: snapshot.error.toString());
                   }
                   final weather = snapshot.data;
                   if (weather == null) {
                     return const _ErrorCard(message: 'No data available.');
                   }
                   return _WeatherCard(weather: weather);
+                },
+              ),
+            const SizedBox(height: 20),
+            if (_forecastFuture != null)
+              FutureBuilder<List<ForecastItem>>(
+                future: _forecastFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError || !snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+                  return _ForecastRow(items: snapshot.data!);
                 },
               ),
           ],
@@ -213,6 +240,72 @@ class _InitialMessage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ForecastRow extends StatelessWidget {
+  const _ForecastRow({required this.items});
+
+  final List<ForecastItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+ final gapCount = items.length - 1;
+        final cardWidth =
+            (constraints.maxWidth - (gapCount * 10)) / items.length;
+
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: items.map((item) {
+            final hour = item.dateTime.hour;
+            final label = hour == 0
+                ? '12 am'
+                : hour < 12
+                    ? '$hour am'
+                    : hour == 12
+                        ? '12 pm'
+                        : '${hour - 12} pm';
+
+            return Container(
+              width: cardWidth,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    item.condition,
+                    style: theme.textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Image.network(
+                    item.iconUrl,
+                    width: 36,
+                    height: 36,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.cloud),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${item.temperature.toStringAsFixed(0)}°',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  Text(label, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }
