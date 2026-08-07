@@ -170,8 +170,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
                       child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: CircularProgressIndicator(),
+                        padding: EdgeInsets.all(24),
+                        child: Icon(Icons.cloud_sync_rounded, size: 48),
                       ),
                     );
                   }
@@ -194,7 +194,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
+                        child: Icon(Icons.cloud_sync_rounded, size: 32),
                       ),
                     );
                   }
@@ -252,60 +252,62 @@ class _ForecastRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
- final gapCount = items.length - 1;
-        final cardWidth =
-            (constraints.maxWidth - (gapCount * 10)) / items.length;
+    return SizedBox(
+      height: 130,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final hour = item.dateTime.hour;
+          final label = hour == 0
+              ? '12 am'
+              : hour < 12
+                  ? '$hour am'
+                  : hour == 12
+                      ? '12 pm'
+                      : '${hour - 12} pm';
 
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: items.map((item) {
-            final hour = item.dateTime.hour;
-            final label = hour == 0
-                ? '12 am'
-                : hour < 12
-                    ? '$hour am'
-                    : hour == 12
-                        ? '12 pm'
-                        : '${hour - 12} pm';
-
-            return Container(
-              width: cardWidth,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    item.condition,
-                    style: theme.textTheme.bodySmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Image.network(
-                    item.iconUrl,
-                    width: 36,
-                    height: 36,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.cloud),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${item.temperature.toStringAsFixed(0)}°',
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  Text(label, style: theme.textTheme.bodySmall),
-                ],
-              ),
-            );
-          }).toList(),
-        );
-      },
+          return Container(
+            width: 78,
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  item.condition,
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 4),
+                Image.network(
+                  item.iconUrl,
+                  width: 34,
+                  height: 34,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.cloud),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${item.temperature.toStringAsFixed(0)}°',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
